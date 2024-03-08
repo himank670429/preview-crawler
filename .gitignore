@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+tmp/
+data/
+
+# Mac OS
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Node.js generated files
+npm-debug.log
+yarn-error.log
+
+# OS generated files
+Thumbs.db
+.DS_Store
