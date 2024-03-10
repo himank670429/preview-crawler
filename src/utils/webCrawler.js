@@ -1,17 +1,100 @@
-// const puppeteer = require("puppeteer")
-module.exports = async function(url){
-    const title = "dummy Title";
-    const description = "lorem ipsum doir sit lorem ipsum doir sit";
-    const thumbnail = "https://images.unsplash.com/photo-1574169208507-84376144848b?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8aW1hZ2V8ZW58MHx8MHx8fDA%3D";
+const puppeteer = require("puppeteer");
 
-    /*
-    do the web scraping
-    store the result into title, description, thumbnail 
-    */
+module.exports = async function (url) {
+	const metaData = {
+		url,
+		title: "",
+		description: "",
+		domain: "",
+		icon: "",
+		thumbnail: "",
+	};
 
-    return {
-        title,
-        description,
-        thumbnail
-    }
+	// scrape the content
+	const browser = await puppeteer.launch({
+		headless: false,
+		defaultViewport: false,
+		userDataDir: "./tmp",
+	});
+	const page = await browser.newPage();
+	await page.goto(url, { waitUntil: "domcontentloaded" });
+
+	// extract title
+	metaData.title = await tryFetch(async () => await page.title());
+
+	// extract domain
+	metaData.domain = await tryFetch(async () => {
+		const domainURL = new URL(page.url()).hostname;
+		if (domainURL.startsWith("www.")) {
+			domainURL.substring(4);
+		}
+		return domainURL;
+	});
+
+	// extract favicon href
+	metaData.iconHref =
+		(await tryFetch(
+			async () => await page.$eval('link[rel*="icon"]', (link) => link.href)
+		)) ||
+		(await tryFetch(async () => {
+			const res = (await fetch(url + "/favicon.ico")).text();
+			if (res) {
+				metaData.iconHref = url + "/favicon.ico";
+			} else {
+				metaData.iconHref = null;
+			}
+		}));
+
+	// description
+	metaData.description =
+		(await tryFetch(
+			async () =>
+				await page.$eval(
+					'meta[property="og:description"]',
+					(metaTag) => metaTag.content
+				)
+		)) ||
+		(await tryFetch(
+			async () =>
+				await page.$eval('meta[name="description"]', (metaTag) => metaTag.content)
+		)) ||
+		(await tryFetch(
+			async () =>
+				await page.$eval(
+					'meta[name="twitter:description"',
+					(metaTag) => metaTag.content
+				)
+		));
+	metaData.description = await tryFetch(
+		async () => metaData.description.split(".")[0]
+	);
+
+	// thumbail
+	metaData.thumbnail =
+		(await tryFetch(
+			async () =>
+				await page.$eval('meta[property="og:image"]', (metaTag) => metaTag.content)
+		)) ||
+		(await tryFetch(
+			async () =>
+				await page.$eval('meta[name="twitter:image"]', (metaTag) => metaTag.content)
+		)) ||
+		(await tryFetch(async () => {
+			const pageContentImages = await page.$$eval("img", (imageTags) =>
+				imageTags.map((img) => img.src)
+			);
+			return pageContentImages.length > 0 ? pageContentImages[0] : "";
+		}));
+
+	await browser.close();
+	return metaData;
+};
+
+async function tryFetch(cb) {
+	try {
+		const value = await cb();
+		return value;
+	} catch (err) {
+		return "";
+	}
 }
