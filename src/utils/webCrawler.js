@@ -12,7 +12,7 @@ module.exports = async function (url) {
 
 	// scrape the content
 	const browser = await puppeteer.launch({
-		headless: false,
+		headless: true,
 		defaultViewport: false,
 		userDataDir: "./tmp",
 	});
@@ -32,16 +32,16 @@ module.exports = async function (url) {
 	});
 
 	// extract favicon href
-	metaData.iconHref =
+	metaData.icon =
 		(await tryFetch(
 			async () => await page.$eval('link[rel*="icon"]', (link) => link.href)
 		)) ||
 		(await tryFetch(async () => {
 			const res = (await fetch(url + "/favicon.ico")).text();
 			if (res) {
-				metaData.iconHref = url + "/favicon.ico";
+				metaData.icon = url + "/favicon.ico";
 			} else {
-				metaData.iconHref = null;
+				metaData.icon = "";
 			}
 		}));
 
