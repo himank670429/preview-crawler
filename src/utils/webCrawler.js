@@ -12,7 +12,7 @@ module.exports = async function (url) {
 
 	// scrape the content
 	const browser = await puppeteer.launch({
-		headless: true,
+		headless: false,
 		defaultViewport: false,
 		userDataDir: "./tmp",
 	});
@@ -39,10 +39,9 @@ module.exports = async function (url) {
 		(await tryFetch(async () => {
 			const res = (await fetch(url + "/favicon.ico")).text();
 			if (res) {
-				metaData.icon = url + "/favicon.ico";
-			} else {
-				metaData.icon = "";
+				return url + "/favicon.ico";
 			}
+			return "";
 		}));
 
 	// description
@@ -78,13 +77,7 @@ module.exports = async function (url) {
 		(await tryFetch(
 			async () =>
 				await page.$eval('meta[name="twitter:image"]', (metaTag) => metaTag.content)
-		)) ||
-		(await tryFetch(async () => {
-			const pageContentImages = await page.$$eval("img", (imageTags) =>
-				imageTags.map((img) => img.src)
-			);
-			return pageContentImages.length > 0 ? pageContentImages[0] : "";
-		}));
+		))
 
 	await browser.close();
 	return metaData;
